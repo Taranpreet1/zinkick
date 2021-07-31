@@ -7,7 +7,6 @@
     "dialect": "mysql",
     "operatorsAliases": false,
     "dialectOptions":{
-      "useUTC": false,
       "dateStrings": true,
       "typeCast": true
     },

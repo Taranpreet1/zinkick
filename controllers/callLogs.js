@@ -3,44 +3,161 @@ const { QueryTypes } = require('sequelize');
 const { response } = require('express');
 const request = require('request');
 const jwt = require('jwt-simple');
+const { Parser } = require('json2csv');
+var fs = require('fs');
+const { resolve } = require('path');
+var newline = '\r\n';
 // var salesLogin = require('./salesForceAuth.js');
 
 
 let logs = {
 
-
-    callLogs: async function (req, res) {
+    callLogs: async function (tenantId) {
         try {
-            let logs = await db.sequelize.query('select call_logs.id, call_logs.duration, call_logs.outcome, call_logs.call_start, call_logs.key_contact_id, call_logs.due_date from call_logs inner join key_contacts on call_logs.key_contact_id = key_contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId', {
-                replacements: { tenantId: req.query.tenantId },
+            let logs = await db.sequelize.query('select call_logs.duration as CallDurationInSeconds, call_logs.id as CallObject, call_logs.outcome as CallDisposition, contacts.crm_contact_id as WhoId, call_logs.due_date as ActivityDate from call_logs inner join key_contacts on call_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 10', {
+                replacements: { tenantId: tenantId },
                 type: QueryTypes.SELECT
             });
-            console.log(logs)
-            // if (logs[0]) {
-            //     return res.status(200).send({ message: logs });
+            // if (!logs[0]) {
+            //     return res.status(500).send({ message: 'Something went wrong' });
             // }
-            // else {
+    
+            let fields = ['CallDurationInSeconds','CallObject','CallDisposition','WhoId','ActivityDate'];
+            const opts = {fields}
+
+            const parser = new Parser(opts);
+            const csv = parser.parse(logs);
+            let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csv + newline + '--BOUNDARY--';
+
+            let auth = await salesForceLogin(tenantId);
+            
+            let insertResponse = await bulkInsert(auth, format);
+            console.log(insertResponse)
+           
+            if(insertResponse.state == "UploadComplete")
+            {
+                let callIds = [];
+                logs.forEach(element => {
+                   callIds.push(element.CallObject);
+                });
+                if(callIds[0]){
+                    await db.sequelize.query('update call_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:callLogIds)', {
+                        replacements: {
+                            callLogIds:callIds,
+                            sfInsertId:insertResponse.id
+                        }
+                    });
+                }
+                
+            }
+            // return res.status(200).send(insertResponse);
+        } catch (error) {
+            console.log(error)
+            return res.status(500).send(error);
+        }
+    },
+
+    transferLogs: async function (tenantId) {
+        try {
+            let logs = await db.sequelize.query('select transfer_logs.call_duration as CallDurationInSeconds,transfer_logs.id as CallObject, contacts.crm_contact_id as WhoId from transfer_logs inner join key_contacts on transfer_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 10', {
+                replacements: { tenantId: tenantId },
+                type: QueryTypes.SELECT
+            });
+
+            // if (!logs[0]) { 
             //     return res.status(500).send({ message: 'Something went wrong' });
             // }
 
-            let auth = await salesForceLogin(req.query.tenantId);
+            let fields = ['CallDurationInSeconds','CallObject','WhoId'];
+            const opts = {fields}
 
-            var options = {
-                'method': 'post',
-                'url': 'https://oneclick2-dev-ed.my.salesforce.com/V52.0/jobs/ingest/',
-                'headers': {
-                    'Authorization': 'Bearer' + ' ' + auth.access_token
-                },
-                body: { logs: logs }
-            };
-            request(options, function (request, error) {
-                if (error) throw new Error(error);
-                return res.status(200).send(request);
-            });
+            const parser = new Parser(opts);
+            const csv = parser.parse(logs);
+            let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csv + newline + '--BOUNDARY--';
 
+            let auth = await salesForceLogin(tenantId);
+            let insertResponse = await bulkInsert(auth, format);
+            console.log(insertResponse)
+            if(insertResponse.state == "UploadComplete")
+            {
+                let transferIds = [];
+                logs.forEach(element => {
+                   transferIds.push(element.CallObject);
+                });
+                if(transferIds[0]){
+                    await db.sequelize.query('update transfer_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:transferLogIds)', {
+                        replacements: {
+                            transferLogIds:transferIds,
+                            sfInsertId:insertResponse.id
+                        }
+                    });
+                }
+            }
+            // return res.status(200).send(insertResponse);
         } catch (error) {
             console.log(error)
+            return res.status(500).send(error);
         }
+    },
+
+//     leadStatus: async function (req, res) {
+//         try {
+//             let leadStatus = await db.sequelize.query('SELECT DISTINCT status FROM key_contacts',{
+//                 type: QueryTypes.SELECT
+//             });
+
+//             if (!leadStatus[0]) {
+//                 return res.status(500).send({ message: 'Something went wrong' });
+//             }
+
+//             let fields = ['Status'];
+//             const opts = {fields}
+
+//             const parser = new Parser(opts);
+//             const csv = parser.parse(leadStatus);
+
+//             let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Lead",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csv + newline + '--BOUNDARY--';
+
+//             let auth = await salesForceLogin(req.query.tenantId);
+
+//             var options = {
+//                 'url': auth.instance_url+'/services/data/v52.0/jobs/ingest',
+//                 'headers': {
+//                     'Authorization': auth.token_type + ' ' + auth.access_token,
+//                     'Content-Type' : 'multipart/form-data; boundary=BOUNDARY',
+//                     'Accept': 'application/json'
+//                 },
+//                 body: format
+//             };
+//             request.post(options, function (error, response) {
+//                 if (error) throw new Error(error);
+//                 return res.status(200).send(response.body);
+//             });
+//         } catch (error) {
+//             return res.status(500).send(error);
+//         }
+//     }
+}
+
+async function bulkInsert(auth,format){
+    try {
+        var options = {
+            'url': auth.instance_url+'/services/data/v52.0/jobs/ingest',
+            'headers': {
+                'Authorization': auth.token_type + ' ' + auth.access_token,
+                'Content-Type' : 'multipart/form-data; boundary=BOUNDARY',
+                'Accept': 'application/json'
+            },
+            body: format
+        };
+        return new Promise(function (resolve, reject) {
+            request.post(options, function (error, response) {
+                if (error) throw new Error(error);
+                return resolve(JSON.parse(response.body));
+            });
+        });
+    } catch (error) {
+        return res.status(500).send(error);
     }
 }
 
