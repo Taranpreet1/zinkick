@@ -32,7 +32,7 @@ let logs = {
             let auth = await salesForceLogin(tenantId);
             
             let insertResponse = await bulkInsert(auth, format);
-            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse);
+            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
             if(insertResponse.state == "UploadComplete")
             {
                 let insertIds = [];
@@ -76,7 +76,7 @@ let logs = {
 
             let auth = await salesForceLogin(tenantId);
             let insertResponse = await bulkInsert(auth, format);
-            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse);
+            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
             
             if(insertResponse.state == "UploadComplete")
             {
@@ -140,7 +140,7 @@ let logs = {
 //     }
 }
 
-async function verifyBulkInsert(auth, insertResponse){
+async function verifyBulkInsert(auth, insertResponse, tenantId){
     try {
         let options = {
             'method': 'get',
@@ -155,12 +155,12 @@ async function verifyBulkInsert(auth, insertResponse){
         return new Promise(function (resolve, reject) {
             request(options, function (error, response) {
                 if (error) throw new Error(error);
-                fs.writeFile('csvFile.csv', response.body, function (err) {
+                fs.writeFile('csvFile'+tenantId+'.csv', response.body, function (err) {
                     if (err) throw err;
                     console.log('File is created successfully.');
                 });
                 csvFile()
-                .fromFile('csvFile.csv')
+                .fromFile('csvFile'+tenantId+'.csv')
                 .then((jsonObj)=>{
                     return resolve(jsonObj);
                 })

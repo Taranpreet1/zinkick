@@ -40,7 +40,7 @@ let cronApi = {
             // return res.status(200).send('success');
         } catch (error) {
             console.log(error)
-            return res.status(500).send(error);
+            // return res.status(500).send(error);
         }
     }
 }
