@@ -7,14 +7,14 @@ const { Parser } = require('json2csv');
 var fs = require('fs');
 const { resolve } = require('path');
 var newline = '\r\n';
-// var salesLogin = require('./salesForceAuth.js');
+const csvFile =require('csvtojson')
 
 
 let logs = {
 
     callLogs: async function (tenantId) {
         try {
-            let logs = await db.sequelize.query('select call_logs.duration as CallDurationInSeconds, call_logs.id as CallObject, call_logs.outcome as CallDisposition, contacts.crm_contact_id as WhoId, call_logs.due_date as ActivityDate from call_logs inner join key_contacts on call_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 10', {
+            let logs = await db.sequelize.query('select call_logs.duration as CallDurationInSeconds, call_logs.id as CallObject, call_logs.outcome as CallDisposition, contacts.crm_contact_id as WhoId, call_logs.due_date as ActivityDate from call_logs inner join key_contacts on call_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 5000', {
                 replacements: { tenantId: tenantId },
                 type: QueryTypes.SELECT
             });
@@ -32,23 +32,22 @@ let logs = {
             let auth = await salesForceLogin(tenantId);
             
             let insertResponse = await bulkInsert(auth, format);
-            console.log(insertResponse)
-           
+            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse);
             if(insertResponse.state == "UploadComplete")
             {
-                let callIds = [];
-                logs.forEach(element => {
-                   callIds.push(element.CallObject);
+                let insertIds = [];
+                bulkInsertIds.forEach(element => {
+                    insertIds.push(element.CallObject);
                 });
-                if(callIds[0]){
-                    await db.sequelize.query('update call_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:callLogIds)', {
+                
+                if(insertIds[0]){
+                    await db.sequelize.query('update call_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:insertIds)', {
                         replacements: {
-                            callLogIds:callIds,
+                            insertIds:insertIds,
                             sfInsertId:insertResponse.id
                         }
                     });
                 }
-                
             }
             // return res.status(200).send(insertResponse);
         } catch (error) {
@@ -59,7 +58,7 @@ let logs = {
 
     transferLogs: async function (tenantId) {
         try {
-            let logs = await db.sequelize.query('select transfer_logs.call_duration as CallDurationInSeconds,transfer_logs.id as CallObject, contacts.crm_contact_id as WhoId from transfer_logs inner join key_contacts on transfer_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 10', {
+            let logs = await db.sequelize.query('select transfer_logs.call_duration as CallDurationInSeconds,transfer_logs.id as CallObject, contacts.crm_contact_id as WhoId from transfer_logs inner join key_contacts on transfer_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 5000', {
                 replacements: { tenantId: tenantId },
                 type: QueryTypes.SELECT
             });
@@ -77,17 +76,19 @@ let logs = {
 
             let auth = await salesForceLogin(tenantId);
             let insertResponse = await bulkInsert(auth, format);
-            console.log(insertResponse)
+            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse);
+            
             if(insertResponse.state == "UploadComplete")
             {
-                let transferIds = [];
-                logs.forEach(element => {
-                   transferIds.push(element.CallObject);
+                let insertIds = [];
+                bulkInsertIds.forEach(element => {
+                    insertIds.push(element.CallObject);
                 });
-                if(transferIds[0]){
-                    await db.sequelize.query('update transfer_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:transferLogIds)', {
+                
+                if(insertIds[0]){
+                    await db.sequelize.query('update transfer_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:insertIds)', {
                         replacements: {
-                            transferLogIds:transferIds,
+                            insertIds:insertIds,
                             sfInsertId:insertResponse.id
                         }
                     });
@@ -138,6 +139,38 @@ let logs = {
 //         }
 //     }
 }
+
+async function verifyBulkInsert(auth, insertResponse){
+    try {
+        let options = {
+            'method': 'get',
+            'url': auth.instance_url+'/services/data/v52.0/jobs/ingest/' + insertResponse.id + '/successfulResults',
+            'headers': {
+                'Authorization': auth.token_type + ' ' + auth.access_token,
+                'Content-Type' : 'application/json; charset=UTF-8',
+                'Accept': 'text/csv'
+            },
+        };
+
+        return new Promise(function (resolve, reject) {
+            request(options, function (error, response) {
+                if (error) throw new Error(error);
+                fs.writeFile('csvFile.csv', response.body, function (err) {
+                    if (err) throw err;
+                    console.log('File is created successfully.');
+                });
+                csvFile()
+                .fromFile('csvFile.csv')
+                .then((jsonObj)=>{
+                    return resolve(jsonObj);
+                })
+            });
+        });
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 
 async function bulkInsert(auth,format){
     try {

@@ -44,7 +44,7 @@ let cronApi = {
         }
     }
 }
-// cron.schedule('* * * * *', () => {
-//     cronApi.syncCallLogs();
-//   });
+cron.schedule('* * * * *', () => {
+    cronApi.syncCallLogs();
+  });
 module.exports = cronApi;
