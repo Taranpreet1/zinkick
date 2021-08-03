@@ -2,10 +2,6 @@ const db = require('../models/index')
 const { QueryTypes } = require('sequelize');
 const { Validator } = require('node-input-validator');
 const jwt = require('jwt-simple');
-const request = require('request');
-const axios = require("axios");
-var FormData = require('form-data');
-const { token } = require('morgan');
 
 let salesForceAuth = {
     addSalesForceAccount: async function (req, res) {
@@ -23,6 +19,7 @@ let salesForceAuth = {
             //     require('../config/secret')()
             // );
             // console.log('token--------',token)
+
             let validator = new Validator(req.body, {
                tenantId: 'required',
                userName: 'required',
@@ -37,8 +34,7 @@ let salesForceAuth = {
                 let errorMessage = validation.parsevalidation(validator.errors);
                 return res.status(422).send({ message: errorMessage });
             }
-            let userCred = await decodePassword(req.body.tenantId)
-            console.log(userCred);
+            let userCred = await decodePassword(req.body.tenantId);
             let encodedPassword = await encodepassword(req.body.password);
 
             let salesForceUser = await db.sequelize.query('select * from crm_integration where tenant_id = :tenantId limit 1', {
@@ -65,11 +61,11 @@ let salesForceAuth = {
             let insert = await db.sequelize.query('insert into crm_integration (tenant_id, username, password, client_id, client_secret,sync_time, created_date) values (:tenantId,:username, :password, :clientId, :clientSecret, :syncTime, :createdDate)', {
                 replacements: {
                     tenantId: userCred.tenantId,
-                    username: userCred.username,
+                    username: req.body.userName,
                     password: encodedPassword,
-                    clientId: userCred.client_id,
-                    clientSecret: userCred.client_secret,
-                    syncTime: userCred.syncTime,
+                    clientId: req.body.clientId,
+                    clientSecret: req.body.clientSecret,
+                    syncTime: req.body.syncTime,
                     createdDate: new Date()
                 }
             });
