@@ -31,22 +31,24 @@ let logs = {
 
             let auth = await salesForceLogin(tenantId);
             
-            let insertResponse = await bulkInsert(auth, format);
-            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
-            if(insertResponse.state == "UploadComplete")
-            {
-                let insertIds = [];
-                bulkInsertIds.forEach(element => {
-                    insertIds.push(element.CallObject);
-                });
-                
-                if(insertIds[0]){
-                    await db.sequelize.query('update call_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:insertIds)', {
-                        replacements: {
-                            insertIds:insertIds,
-                            sfInsertId:insertResponse.id
-                        }
+            if(auth.access_token){
+                let insertResponse = await bulkInsert(auth, format);
+                let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
+                if(insertResponse.state == "UploadComplete")
+                {
+                    let insertIds = [];
+                    bulkInsertIds.forEach(element => {
+                        insertIds.push(element.CallObject);
                     });
+
+                    if(insertIds[0]){
+                        await db.sequelize.query('update call_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:insertIds)', {
+                            replacements: {
+                                insertIds:insertIds,
+                                sfInsertId:insertResponse.id
+                            }
+                        });
+                    }
                 }
             }
             // return res.status(200).send(insertResponse);
@@ -75,23 +77,25 @@ let logs = {
             let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csv + newline + '--BOUNDARY--';
 
             let auth = await salesForceLogin(tenantId);
-            let insertResponse = await bulkInsert(auth, format);
-            let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
-            
-            if(insertResponse.state == "UploadComplete")
-            {
-                let insertIds = [];
-                bulkInsertIds.forEach(element => {
-                    insertIds.push(element.CallObject);
-                });
+            if(auth.access_token){
+                let insertResponse = await bulkInsert(auth, format);
+                let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
                 
-                if(insertIds[0]){
-                    await db.sequelize.query('update transfer_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:insertIds)', {
-                        replacements: {
-                            insertIds:insertIds,
-                            sfInsertId:insertResponse.id
-                        }
+                if(insertResponse.state == "UploadComplete")
+                {
+                    let insertIds = [];
+                    bulkInsertIds.forEach(element => {
+                        insertIds.push(element.CallObject);
                     });
+
+                    if(insertIds[0]){
+                        await db.sequelize.query('update transfer_logs SET sync = true, sf_insert_id = :sfInsertId where id IN (:insertIds)', {
+                            replacements: {
+                                insertIds:insertIds,
+                                sfInsertId:insertResponse.id
+                            }
+                        });
+                    }
                 }
             }
             // return res.status(200).send(insertResponse);
