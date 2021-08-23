@@ -73,6 +73,7 @@ let salesForceAuth = {
             return res.status(200).send("successfully inserted user");
         } catch (error) {
             console.log(error)
+            return res.status(500).send("insert failed");
         }
     },
 
