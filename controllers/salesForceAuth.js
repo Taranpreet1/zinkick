@@ -1,6 +1,7 @@
 const db = require('../models/index')
 const { QueryTypes } = require('sequelize');
 const { Validator } = require('node-input-validator');
+const validation = require("../helpers/validation.js");
 const jwt = require('jwt-simple');
 
 let salesForceAuth = {
@@ -9,12 +10,12 @@ let salesForceAuth = {
 
             // var token = jwt.encode(
             //     {
-            //         username:'hardik@itoneclick.com',
-            //         password:'Oneclick1@hSCkZMoDDwHy9vJbAO94SWh2',
-            //         client_id:'3MVG9fe4g9fhX0E7rlHBLWeVJX9XmwGpDEFPsI.VQz91.pdpEXUPQlR1zDZ4hwuKUbSvMI_Huun4r9B9LEZ1l',
-            //         client_secret:'C4608E3701EE3BC1ECF88F9DB38D5DB4CBE90B0D7BBD51D5FCCF67D500EBFE1D',
-            //         tenantId: 30,
-            //         syncTime:10
+            //         // username:'hardik@itoneclick.com',
+            //         // password:'Oneclick1@hSCkZMoDDwHy9vJbAO94SWh2',
+            //         // client_id:'3MVG9fe4g9fhX0E7rlHBLWeVJX9XmwGpDEFPsI.VQz91.pdpEXUPQlR1zDZ4hwuKUbSvMI_Huun4r9B9LEZ1l',
+            //         // client_secret:'C4608E3701EE3BC1ECF88F9DB38D5DB4CBE90B0D7BBD51D5FCCF67D500EBFE1D',
+            //         tenantId: 28
+            //         // syncTime:10
             //     },
             //     require('../config/secret')()
             // );
