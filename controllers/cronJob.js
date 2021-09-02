@@ -10,9 +10,10 @@ let cronApi = {
             date.setSeconds(0);
             date.setUTCMilliseconds(0);
             
-            let crmIntegration = await db.sequelize.query('select * from crm_integration', {
+            let crmIntegration = await db.sequelize.query('select * from crm_integration where status = true', {
                 type: QueryTypes.SELECT
             });
+            
             let crmIds = [];
             for (const iterator of crmIntegration) {
                 

@@ -3,19 +3,20 @@ const { QueryTypes } = require('sequelize');
 const { Validator } = require('node-input-validator');
 const validation = require("../helpers/validation.js");
 const jwt = require('jwt-simple');
+const request = require('request');
 
 let salesForceAuth = {
     addSalesForceAccount: async function (req, res) {
         try {
 
             // var token = jwt.encode(
-            //     {
-            //         // username:'hardik@itoneclick.com',
-            //         // password:'Oneclick1@hSCkZMoDDwHy9vJbAO94SWh2',
-            //         // client_id:'3MVG9fe4g9fhX0E7rlHBLWeVJX9XmwGpDEFPsI.VQz91.pdpEXUPQlR1zDZ4hwuKUbSvMI_Huun4r9B9LEZ1l',
-            //         // client_secret:'C4608E3701EE3BC1ECF88F9DB38D5DB4CBE90B0D7BBD51D5FCCF67D500EBFE1D',
-            //         tenantId: 28
-            //         // syncTime:10
+                // {
+                    // username:'hardik@itoneclick.com',
+                    // password:'Oneclick1@hSCkZMoDDwHy9vJbAO94SWh2',
+                    // client_id:'3MVG9fe4g9fhX0E7rlHBLWeVJX9XmwGpDEFPsI.VQz91.pdpEXUPQlR1zDZ4hwuKUbSvMI_Huun4r9B9LEZ1l',
+                    // client_secret:'C4608E3701EE3BC1ECF88F9DB38D5DB4CBE90B0D7BBD51D5FCCF67D500EBFE1D',
+                    // tenantId: 26
+                    // syncTime:10
             //     },
             //     require('../config/secret')()
             // );
@@ -27,7 +28,8 @@ let salesForceAuth = {
                password: 'required',
                clientId: 'required',
                clientSecret: 'required',
-               syncTime: 'required'
+               syncTime: 'required',
+               status: 'required'
             });
 
             let matched = await validator.check();
@@ -35,6 +37,12 @@ let salesForceAuth = {
                 let errorMessage = validation.parsevalidation(validator.errors);
                 return res.status(422).send({ message: errorMessage });
             }
+
+            let validateDetails = await salesForceLogin(req.body.userName,req.body.password,req.body.clientId,req.body.clientSecret);
+            if(validateDetails.error || validateDetails.error == 'invalid_grant'){
+                return res.status(404).send('Wrong Credentials');
+            }
+            
             let userCred = await decodePassword(req.body.tenantId);
             let encodedPassword = await encodepassword(req.body.password);
 
@@ -44,7 +52,7 @@ let salesForceAuth = {
             });
 
             if (salesForceUser[0]) {
-                let update = await db.sequelize.query('update crm_integration SET username = :username,password = :password, client_id = :clientId, client_secret = :clientSecret, updated_date = :updatedDate, sync_time = :syncTime where tenant_id = :tenantId', {
+                let update = await db.sequelize.query('update crm_integration SET username = :username,password = :password, client_id = :clientId, client_secret = :clientSecret, updated_date = :updatedDate, sync_time = :syncTime, status = :status where tenant_id = :tenantId', {
                     replacements: {
                         tenantId: userCred.tenantId,
                         username: req.body.userName,
@@ -53,13 +61,14 @@ let salesForceAuth = {
                         clientSecret: req.body.clientSecret,
                         updatedDate: new Date(),
                         syncTime: req.body.syncTime,
+                        status: req.body.status
                     }
                 });
 
                 return res.status(200).send('successfully updated');
             }
 
-            let insert = await db.sequelize.query('insert into crm_integration (tenant_id, username, password, client_id, client_secret,sync_time, created_date) values (:tenantId,:username, :password, :clientId, :clientSecret, :syncTime, :createdDate)', {
+            let insert = await db.sequelize.query('insert into crm_integration (tenant_id, username, password, client_id, client_secret,sync_time, created_date) values (:tenantId,:username, :password, :clientId, :clientSecret, :syncTime, :createdDate, :status)', {
                 replacements: {
                     tenantId: userCred.tenantId,
                     username: req.body.userName,
@@ -67,7 +76,8 @@ let salesForceAuth = {
                     clientId: req.body.clientId,
                     clientSecret: req.body.clientSecret,
                     syncTime: req.body.syncTime,
-                    createdDate: new Date()
+                    createdDate: new Date(),
+                    status: req.body.status
                 }
             });
 
@@ -152,6 +162,30 @@ let salesForceAuth = {
     //         return res.status(500).send(error);
     //     }
     // }
+}
+
+function salesForceLogin(userName,password,clientId,clientSecret){
+    try {
+        var options = {
+            'method': 'post',
+            'url': 'https://login.salesforce.com/services/oauth2/token',
+            formData: {
+                'username': userName,
+                'password': password,
+                'grant_type': 'password',
+                'client_id': clientId,
+                'client_secret': clientSecret
+            }
+        };
+        return new Promise(function (resolve, reject) {
+            request(options, function (error, response) {
+                if (error) throw new Error(error);
+                return resolve(JSON.parse(response.body));
+            });
+        });
+    } catch (error) {
+        
+    }
 }
 function encodepassword(password) {
     var token = jwt.encode(
