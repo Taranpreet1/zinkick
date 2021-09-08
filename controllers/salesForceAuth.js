@@ -68,7 +68,7 @@ let salesForceAuth = {
                 return res.status(200).send('successfully updated');
             }
 
-            let insert = await db.sequelize.query('insert into crm_integration (tenant_id, username, password, client_id, client_secret,sync_time, created_date) values (:tenantId,:username, :password, :clientId, :clientSecret, :syncTime, :createdDate, :status)', {
+            let insert = await db.sequelize.query('insert into crm_integration (tenant_id, username, password, client_id, client_secret,sync_time, created_date, status) values (:tenantId,:username, :password, :clientId, :clientSecret, :syncTime, :createdDate, :status)', {
                 replacements: {
                     tenantId: userCred.tenantId,
                     username: req.body.userName,
