@@ -65,7 +65,7 @@ let salesForceAuth = {
                     }
                 });
 
-                return res.status(200).send('successfully updated');
+                return res.status(200).send({message: 'successfully updated'});
             }
 
             let insert = await db.sequelize.query('insert into crm_integration (tenant_id, username, password, client_id, client_secret,sync_time, created_date, status) values (:tenantId,:username, :password, :clientId, :clientSecret, :syncTime, :createdDate, :status)', {
@@ -81,10 +81,10 @@ let salesForceAuth = {
                 }
             });
 
-            return res.status(200).send("successfully inserted user");
+            return res.status(200).send({message: "successfully inserted user"});
         } catch (error) {
             console.log(error)
-            return res.status(500).send("insert failed");
+            return res.status(500).send({message:"insert failed"});
         }
     },
 
@@ -109,7 +109,7 @@ let salesForceAuth = {
             });
 
             if(!salesForceUser[0]){
-                return res.status(404).send("no user found");
+                return res.status(404).send({message:"user not found"});
             }
 
             // salesForceUser[0]['decodedPassword'] = await decodePassword(salesForceUser[0].password);
