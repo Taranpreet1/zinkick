@@ -40,7 +40,7 @@ let salesForceAuth = {
 
             let validateDetails = await salesForceLogin(req.body.userName,req.body.password,req.body.clientId,req.body.clientSecret);
             if(validateDetails.error || validateDetails.error == 'invalid_grant'){
-                return res.status(404).send('Wrong Credentials');
+                return res.status(404).send({ message:'Wrong Credentials'});
             }
             
             let userCred = await decodePassword(req.body.tenantId);
