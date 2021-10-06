@@ -18,29 +18,31 @@ let logs = {
                 replacements: { tenantId: tenantId },
                 type: QueryTypes.SELECT
             });
-    
-            let fields = ['CallDurationInSeconds','CallObject','CallDisposition','WhoId','ActivityDate'];
-            const opts = {fields}
 
-            const parser = new Parser(opts);
-            const csv = parser.parse(logs);
-            let lines = csv.replace(/\r\n?/g, "\n").split("\n");
-            let csvData = "";
-            lines.forEach(element => {
-                csvData += element+newline;
-            });
+            if(logs.length > 0){
+                let fields = ['CallDurationInSeconds','CallObject','CallDisposition','WhoId','ActivityDate'];
+                const opts = {fields}
 
-            let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csvData + '--BOUNDARY--';
+                const parser = new Parser(opts);
+                const csv = parser.parse(logs);
+                let lines = csv.replace(/\r\n?/g, "\n").split("\n");
+                let csvData = "";
+                lines.forEach(element => {
+                    csvData += element+newline;
+                });
 
-            let auth = await salesForceLogin(tenantId);
-            
-            if(auth.access_token){
-                let insertResponse = await bulkInsert(auth, format);
+                let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csvData + '--BOUNDARY--';
+
+                let auth = await salesForceLogin(tenantId);
                 
-                if(insertResponse.state == "UploadComplete")
-                {
-                    // let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
-                    checkInsertedRecord(auth, insertResponse, tenantId, 0)
+                if(auth.access_token){
+                    let insertResponse = await bulkInsert(auth, format);
+                    
+                    if(insertResponse.state == "UploadComplete")
+                    {
+                        // let bulkInsertIds = await verifyBulkInsert(auth, insertResponse, tenantId);
+                        checkInsertedRecord(auth, insertResponse, tenantId, 0)
+                    }
                 }
             }
             // return res.status(200).send(insertResponse);
@@ -59,26 +61,27 @@ let logs = {
             // if (!logs[0]) { 
             //     return res.status(500).send({ message: 'Something went wrong' });
             // }
+            if(logs.length > 0){
+                let fields = ['CallDurationInSeconds','CallObject','WhoId'];
+                const opts = {fields}
 
-            let fields = ['CallDurationInSeconds','CallObject','WhoId'];
-            const opts = {fields}
+                const parser = new Parser(opts);
+                const csv = parser.parse(logs);
+                let lines = csv.replace(/\r\n?/g, "\n").split("\n");
+                let csvData = "";
+                lines.forEach(element => {
+                    csvData += element+newline;
+                });
+                let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csvData + '--BOUNDARY--';
 
-            const parser = new Parser(opts);
-            const csv = parser.parse(logs);
-            let lines = csv.replace(/\r\n?/g, "\n").split("\n");
-            let csvData = "";
-            lines.forEach(element => {
-                csvData += element+newline;
-            });
-            let format = `--BOUNDARY`+newline+`Content-Type: application/json`+newline+`Content-Disposition: form-data; name="job"`+newline+newline+`{`+newline+`"object":"Task",`+newline+`"contentType":"CSV",`+newline+`"operation": "insert",`+newline+`"lineEnding": "CRLF"`+newline+`}`+newline+newline+`--BOUNDARY`+newline+`Content-Type: text/csv`+newline+`Content-Disposition: form-data; name="content"; filename="content"`+ newline + newline + csvData + '--BOUNDARY--';
-
-            let auth = await salesForceLogin(tenantId);
-            if(auth.access_token){
-                let insertResponse = await bulkInsert(auth, format);
-                // let bulkInsertIds = await checkInsertedRecords(auth, insertResponse, tenantId);
-                if(insertResponse.state == "UploadComplete")
-                {
-                    checkInsertedRecord(auth, insertResponse, tenantId, 1)
+                let auth = await salesForceLogin(tenantId);
+                if(auth.access_token){
+                    let insertResponse = await bulkInsert(auth, format);
+                    // let bulkInsertIds = await checkInsertedRecords(auth, insertResponse, tenantId);
+                    if(insertResponse.state == "UploadComplete")
+                    {
+                        checkInsertedRecord(auth, insertResponse, tenantId, 1)
+                    }
                 }
             }
             // return res.status(200).send(insertResponse);
