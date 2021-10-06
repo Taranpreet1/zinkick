@@ -14,7 +14,7 @@ let logs = {
 
     callLogs: async function (tenantId) {
         try {
-            let logs = await db.sequelize.query('select call_logs.duration as CallDurationInSeconds, call_logs.id as CallObject, call_logs.outcome as CallDisposition, contacts.crm_contact_id as WhoId, call_logs.due_date as ActivityDate from call_logs inner join key_contacts on call_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = true limit 5', {
+            let logs = await db.sequelize.query('select call_logs.duration as CallDurationInSeconds, call_logs.id as CallObject, call_logs.outcome as CallDisposition, contacts.crm_contact_id as WhoId, call_logs.due_date as ActivityDate from call_logs inner join key_contacts on call_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 5000', {
                 replacements: { tenantId: tenantId },
                 type: QueryTypes.SELECT
             });
@@ -52,11 +52,10 @@ let logs = {
 
     transferLogs: async function (tenantId) {
         try {
-            let logs = await db.sequelize.query('select transfer_logs.call_duration as CallDurationInSeconds,transfer_logs.id as CallObject, contacts.crm_contact_id as WhoId from transfer_logs inner join key_contacts on transfer_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = true limit 5', {
+            let logs = await db.sequelize.query('select transfer_logs.call_duration as CallDurationInSeconds,transfer_logs.id as CallObject, contacts.crm_contact_id as WhoId from transfer_logs inner join key_contacts on transfer_logs.key_contact_id = key_contacts.id inner join contacts on key_contacts.contact_id = contacts.id inner join campaigns on key_contacts.campaign_id = campaigns.id where campaigns.tenant_id = :tenantId and sync = false limit 5000', {
                 replacements: { tenantId: tenantId },
                 type: QueryTypes.SELECT
             });
-            
             // if (!logs[0]) { 
             //     return res.status(500).send({ message: 'Something went wrong' });
             // }
