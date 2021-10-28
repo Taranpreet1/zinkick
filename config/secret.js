@@ -1,3 +1,3 @@
-module.exports = function() {
-  return 'Zink@1ac&&dG@';
-}
+module.exports = function () {
+  return "Zink@1ac&&dG@";
+};

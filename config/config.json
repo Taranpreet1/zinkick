@@ -1,8 +1,8 @@
 {
   "development": {
     "username": "root",
-    "password": "FG4kCVPyXdN-bWmFhx3T",
-    "database": "zinkick_app",
+    "password": "Oneclick1@",
+    "database": "zinkick-app",
     "host": "localhost",
     "dialect": "mysql",
     "operatorsAliases": 0,
